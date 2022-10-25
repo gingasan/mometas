@@ -10,22 +10,22 @@ class Processor(object):
         self.eos_id = tokenizer.sep_token_id
         self.pad_id = tokenizer.pad_token_id
 
-    def __call__(self, inputs, task, **kwargs):
+    def __call__(self, task, **kwargs):
         if task == "mlm":
-            return self.mask_tokens(inputs, **kwargs)
+            return self.mask_tokens(kwargs["input_ids"], kwargs["attention_mask"])
         elif task == "emlm":
-            return self.mask_tokens_guided(inputs, **kwargs)
+            return self.mask_tokens_guided(kwargs["input_ids"], kwargs["attention_mask"], kwargs["guide_mask"])
         elif task == "atd":
-            return self.add_tokens(inputs, **kwargs)
+            return self.add_tokens(kwargs["input_ids"], kwargs["attention_mask"])
         elif task == "dtd":
-            return self.delete_tokens(inputs, **kwargs)
+            return self.delete_tokens(kwargs["input_ids"], kwargs["attention_mask"])
         elif task == "cse":
-            return inputs[:, None, :].repeat(1, 2, 1), None
+            return self.repeat_sents(kwargs["input_ids"], kwargs["attention_mask"])
         else:
             raise NotImplementedError
 
-    def mask_tokens(self, inputs, noise_probability=0.15):
-        inputs, labels = inputs.clone(), inputs.clone()
+    def mask_tokens(self, input_ids, input_mask, noise_probability=0.15):
+        input_ids, labels = input_ids.clone(), input_ids.clone()
         probability_matrix = torch.full(labels.shape, noise_probability)
         special_tokens_mask = [
             self.tokenizer.get_special_tokens_mask(val, already_has_special_tokens=True) for val in labels.tolist()
@@ -37,16 +37,20 @@ class Processor(object):
         labels[~masked_indices] = -100
 
         indices_replaced = torch.bernoulli(torch.full(labels.shape, 0.8)).bool() & masked_indices
-        inputs[indices_replaced] = self.tokenizer.convert_tokens_to_ids(self.tokenizer.mask_token)
+        input_ids[indices_replaced] = self.tokenizer.convert_tokens_to_ids(self.tokenizer.mask_token)
 
         indices_random = torch.bernoulli(torch.full(labels.shape, 0.5)).bool() & masked_indices & ~indices_replaced
         random_words = torch.randint(len(self.tokenizer), labels.shape, dtype=torch.long)
-        inputs[indices_random] = random_words[indices_random]
+        input_ids[indices_random] = random_words[indices_random]
 
-        return inputs, labels
+        return {
+            "input_ids": input_ids,
+            "attention_mask": input_mask,
+            "labels": labels,
+        }
 
-    def mask_tokens_guided(self, inputs, guide_mask, noise_probability=0.5):
-        inputs, labels = inputs.clone(), inputs.clone()
+    def mask_tokens_guided(self, input_ids, input_mask, guide_mask, noise_probability=0.5):
+        input_ids, labels = input_ids.clone(), input_ids.clone()
         probability_matrix = torch.zeros(labels.shape)
 
         probability_matrix.masked_fill_(guide_mask, value=float(noise_probability))
@@ -54,16 +58,20 @@ class Processor(object):
         labels[~masked_indices] = -100
 
         indices_replaced = torch.bernoulli(torch.full(labels.shape, 0.8)).bool() & masked_indices
-        inputs[indices_replaced] = self.tokenizer.convert_tokens_to_ids(self.tokenizer.mask_token)
+        input_ids[indices_replaced] = self.tokenizer.convert_tokens_to_ids(self.tokenizer.mask_token)
 
         indices_random = torch.bernoulli(torch.full(labels.shape, 0.5)).bool() & masked_indices & ~indices_replaced
         random_words = torch.randint(len(self.tokenizer), labels.shape, dtype=torch.long)
-        inputs[indices_random] = random_words[indices_random]
+        input_ids[indices_random] = random_words[indices_random]
 
-        return inputs, labels
+        return {
+            "input_ids": input_ids,
+            "attention_mask": input_mask,
+            "labels": labels,
+        }
 
-    def add_tokens(self, inputs, noise_probability=0.15):
-        probability_matrix = torch.full(inputs.shape, noise_probability)
+    def add_tokens(self, input_ids, input_mask, noise_probability=0.15):
+        probability_matrix = torch.full(input_ids.shape, noise_probability)
 
         noisy_inputs = []
         labels = []
@@ -74,19 +82,19 @@ class Processor(object):
             j = 0
             k = 0
             while j < len(masked_indices[0]):
-                if inputs[i][k] == 0:
+                if input_ids[i][k] == 0:
                     noisy_inputs[-1] += [self.pad_id] * (self.msl - j)
                     labels[-1] += [0] * (self.msl - j)
                     break
 
                 if j == 0 or j == len(masked_indices[0]) - 1:
                     labels[-1] += [0]
-                    noisy_inputs[-1] += [inputs[i][k]]
+                    noisy_inputs[-1] += [input_ids[i][k]]
                 else:
                     label = masked_indices[i][j]
                     labels[-1] += [label]
                     if label == 0:
-                        noisy_inputs[-1] += [inputs[i][k]]
+                        noisy_inputs[-1] += [input_ids[i][k]]
                     else:
                         random_word = random.randint(1, len(self.tokenizer) - 1)
                         noisy_inputs[-1] += [random_word]
@@ -104,10 +112,14 @@ class Processor(object):
         noisy_inputs = torch.tensor(noisy_inputs, dtype=torch.long)
         labels = torch.tensor(labels, dtype=torch.long)
 
-        return noisy_inputs, labels
+        return {
+            "input_ids": noisy_inputs,
+            "attention_mask": input_mask,
+            "labels": labels,
+        }
 
-    def delete_tokens(self, inputs, noise_probability=0.15):
-        probability_matrix = torch.full(inputs.shape, noise_probability)
+    def delete_tokens(self, input_ids, input_mask, noise_probability=0.15):
+        probability_matrix = torch.full(input_ids.shape, noise_probability)
 
         noisy_inputs = []
         labels = []
@@ -117,20 +129,20 @@ class Processor(object):
             labels += [[]]
             j = 0
             while j < len(masked_indices[0]):
-                if inputs[i][j] == 0:
+                if input_ids[i][j] == 0:
                     noisy_inputs[-1] += [self.pad_id] * (self.msl - j)
                     labels[-1] += [0] * (self.msl - j)
                     break
 
                 if j == 0 or j == len(masked_indices[0]) - 1:
                     labels[-1] += [0]
-                    noisy_inputs[-1] += [inputs[i][j]]
+                    noisy_inputs[-1] += [input_ids[i][j]]
                 else:
                     label = masked_indices[i][j]
                     if len(labels[-1]) <= len(noisy_inputs[-1]):
                         labels[-1] += [label]
                     if label == 0:
-                        noisy_inputs[-1] += [inputs[i][j]]
+                        noisy_inputs[-1] += [input_ids[i][j]]
 
                 j += 1
 
@@ -142,4 +154,17 @@ class Processor(object):
         noisy_inputs = torch.tensor(noisy_inputs, dtype=torch.long)
         labels = torch.tensor(labels, dtype=torch.long)
 
-        return noisy_inputs, labels
+        return {
+            "input_ids": noisy_inputs,
+            "attention_mask": input_mask,
+            "labels": labels,
+        }
+
+    def repeat_sents(self, input_ids, input_mask):
+        input_ids = input_ids[: input_ids.shape[0] // 2]
+        input_mask = input_mask[: input_mask.shape[0] // 2]
+        return {
+            "input_ids": input_ids[:, None, :].repeat(1, 2, 1),
+            "attention_mask": input_mask[:, None, :].repeat(1, 2, 1),
+            "labels": None,
+        }
