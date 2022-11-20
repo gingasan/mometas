@@ -4,7 +4,7 @@ This repo is for the EMNLP 2022 paper [*Forging Multiple Training Objectives for
 
 ## Pre-training corpus and pre-trained model
 * Our per-training corpus: [a subset of C4]().
-* Our pre-trained model: [BERT-large]().
+* Our pre-trained model: [BERT-large](https://drive.google.com/file/d/1ex274wgvLH14xxhkxBWAycRU1vS7ldXQ/view?usp=share_link).
 
 ## Run pre-training
 Pytorch distributed training:
