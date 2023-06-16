@@ -3,7 +3,7 @@
 This repo is for the EMNLP 2022 paper [*Forging Multiple Training Objectives for Pre-trained Language Models via Meta-Learning*](https://arxiv.org/abs/2210.10293).
 
 ## Pre-training corpus and pre-trained model
-* Our per-training corpus: [a subset of C4]().
+* Our per-training corpus: [a subset of C4](https://drive.google.com/file/d/1uZHd9cITakWaHKJs3p1W_WbKVNUzhe9k/view?usp=share_link).
 * Our pre-trained model: [BERT-large](https://drive.google.com/file/d/1ex274wgvLH14xxhkxBWAycRU1vS7ldXQ/view?usp=share_link).
 
 ## Run pre-training
@@ -32,26 +32,28 @@ python run_pretraining.py \
 
 **Citation**
 ```bib
-@article{DBLP:journals/corr/abs-2210-10293,
-  author    = {Hongqiu Wu and
-               Ruixue Ding and
-               Hai Zhao and
-               Boli Chen and
-               Pengjun Xie and
-               Fei Huang and
-               Min Zhang},
-  title     = {Forging Multiple Training Objectives for Pre-trained Language Models
-               via Meta-Learning},
-  journal   = {CoRR},
-  volume    = {abs/2210.10293},
-  year      = {2022},
-  url       = {https://doi.org/10.48550/arXiv.2210.10293},
-  doi       = {10.48550/arXiv.2210.10293},
-  eprinttype = {arXiv},
-  eprint    = {2210.10293},
-  timestamp = {Mon, 24 Oct 2022 18:10:06 +0200},
-  biburl    = {https://dblp.org/rec/journals/corr/abs-2210-10293.bib},
-  bibsource = {dblp computer science bibliography, https://dblp.org}
+@inproceedings{DBLP:conf/emnlp/WuDZCXHZ22,
+  author       = {Hongqiu Wu and
+                  Ruixue Ding and
+                  Hai Zhao and
+                  Boli Chen and
+                  Pengjun Xie and
+                  Fei Huang and
+                  Min Zhang},
+  editor       = {Yoav Goldberg and
+                  Zornitsa Kozareva and
+                  Yue Zhang},
+  title        = {Forging Multiple Training Objectives for Pre-trained Language Models
+                  via Meta-Learning},
+  booktitle    = {Findings of the Association for Computational Linguistics: {EMNLP}
+                  2022, Abu Dhabi, United Arab Emirates, December 7-11, 2022},
+  pages        = {6454--6466},
+  publisher    = {Association for Computational Linguistics},
+  year         = {2022},
+  url          = {https://aclanthology.org/2022.findings-emnlp.482},
+  timestamp    = {Tue, 07 Feb 2023 17:10:52 +0100},
+  biburl       = {https://dblp.org/rec/conf/emnlp/WuDZCXHZ22.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
 }
 ```
 
